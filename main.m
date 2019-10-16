@@ -21,18 +21,34 @@ t = t - t(1);
 Ts = t(2) - t(1);
 %Obtenemos la frecuencia de muestreo
 Fs = 1/Ts;
+
+%Obtenemos la amgnitud del vector 3D
+tam_array = length(t); 
+A = zeros(1,tam_array);
+
+for i = 1:tam_array - 1
+    x = Ax(i) - Ax(i + 1);
+    y = Ay(i) - Ay(i + 1);
+    z = Az(i) - Az(i + 1);
+    A(1,i) = sqrt(x^2 + y^2 + z^2);
+end
+
 %Dibujamos cada aceleración por separado
 figure(1);
-subplot(3,1,1);
+
+subplot(4,1,1);
 plot(t,Ax);
 axis([t(1) t(length(t) - 1) min(Ax) max(Ax)])
 
-subplot(3,1,2);
+subplot(4,1,2);
 plot(t,Ay);
 axis([t(1) t(length(t) - 1) min(Ay) max(Ay)])
 
-subplot(3,1,3);
+subplot(4,1,3);
 plot(t,Az);
 axis([t(1) t(length(t) - 1) min(Az) max(Az)])
 
+subplot(4,1,4);
+plot(t,A);
+axis([t(1) t(length(t) - 1) min(A) max(A)])
 
