@@ -1,11 +1,11 @@
 clc;clear;
 %%%Nos devuelve una TABLA no matriz
 %Columna 1 --> Numero muestra
-%Columna 2 --> Tiempo ms?
-%Columna 3,4,5 --> Acceleracion x, y, z
-M = readtable('precalib1_W.csv');
-%Convertimos a array
-N = table2array(M(:,2:5));
+%Columna 2 --> Tiempo (ms)?
+%Columna 3,4,5 --> Acceleracion x, y, z (m/s^2)?
+
+N = cleanData('precalib1_W.csv');
+
 %Separamos en arrays cada componente t, Ax, Ay, Az
 t = N(:,1).';
 Ax = N(:,2).';
@@ -22,20 +22,13 @@ Ts = t(2) - t(1);
 %Obtenemos la frecuencia de muestreo
 Fs = 1/Ts;
 
-%Obtenemos la amgnitud del vector 3D
+%Obtenemos la magnitud del vector 3D
 tam_array = length(t); 
 A = zeros(1,tam_array);
 
-for i = 1:tam_array -1
-    
-    %x = Ax(i) - Ax(i + 1);
-    %y = Ay(i) - Ay(i + 1);
-    %z = Az(i) - Az(i + 1);
-    %A(1,i) = sqrt(x^2 + y^2 + z^2);
-    
+for i = 1:tam_array
     A(1,i) = sqrt(Ax(1,i)^2 + Ay(1,i)^2 + Az(1,i)^2);
 end
-
 
 %%Filtramos
 %%Definimos filtro IIR PASO-ALTO
@@ -52,17 +45,8 @@ A_filtrada = filtfilt(b,a,A);
 A_filtrada = filtfilt(b1, a1, A_filtrada);
 
 %Integral TRAPEZOIDAL
-V = zeros(1,tam_array);
-
-for i = 1:tam_array - 1
-    V(1,i) = trapz(A_filtrada(1,i:i+1));
-end
-
-P = zeros(1,tam_array);
-
-for i = 1:tam_array - 1
-    P(1,i) = trapz(V(1,i:i+1));
-end
+V = cumtrapz(t,A_filtrada);
+P = cumtrapz(t,V);
 
 %Respuesta en frecuencia
 A1 = A.*hann(length(A))';
@@ -87,26 +71,56 @@ plot(f,P2);
 figure(2)
 subplot(6,1,1);
 plot(t,Ax);
-axis([t(1) t(length(t) - 1) min(Ax) max(Ax)])
+xlabel('Time (s)'); ylabel('Ax (m/s^2)');
+axis([t(1) t(length(t) - 1) min(Ax) - 1 max(Ax) + 1]);
 
 subplot(6,1,2);
 plot(t,Ay);
-axis([t(1) t(length(t) - 1) min(Ay) max(Ay)])
+xlabel('Time (s)'); ylabel('Ay (m/s^2)');
+axis([t(1) t(length(t) - 1) min(Ay) - 1 max(Ay) + 1])
 
 subplot(6,1,3);
 plot(t,Az);
-axis([t(1) t(length(t) - 1) min(Az) max(Az)])
+xlabel('Time (s)'); ylabel('Az (m/s^2)');
+axis([t(1) t(length(t) - 1) min(Az) - 1 max(Az) + 1])
 
 subplot(6,1,4);
 plot(t,A_filtrada);
-hold on;
-plot(t,A);
+xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
+axis([t(1) t(length(t) - 1) -10 10])
 
 subplot(6,1,5)
 plot(t,V);
+xlabel('Time (s)'); ylabel('Velocity (m/s)');
 
 subplot(6,1,6)
 plot(t,P);
-%axis([t(1) t(length(t) - 1) min(A_filtrada) max(A_filtrada)])
+xlabel('Time (s)'); ylabel('Distance (m)');
 
+function test()
+
+end
+
+function ground_truth()
+    %%%Nos devuelve una TABLA no matriz
+    N = cleanData('anne1.csv');
+    %Separamos en arrays cada componente t, Ax, Ay, Az
+    %Columna 3 --> start Tiempo s?
+    %Columna 4 --> Depth mm?
+    t = N(:,2).';
+    Depth = N(:,3).';
+    %Hacemos que el eje empiece en 0
+    t = t - t(1);
+    %Pasamos a cm los mm
+    Depth = Depth * 10^-1;
+
+    figure(1);
+    plot(t,Depth);
+end
+
+function x = cleanData(nombre_fich)
+    M = readtable(nombre_fich);
+    N = table2array(M(:,2:width(M)));
+    x = N;
+end
 
