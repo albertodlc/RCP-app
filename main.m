@@ -89,7 +89,7 @@ ylabel("Profundidad (cm)")
 error = Depth_teorica(1:length(Depth_real)) - Depth_real;
 
 subplot(3,1,3);
-stem(0:length(error) - 1, error, '.');
+stem(0:length(error) - 1, abs(error), '.');
 title("Error")
 xlabel("Compresión")
 ylabel("Error (cm)")
