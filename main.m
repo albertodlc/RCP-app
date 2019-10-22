@@ -5,7 +5,7 @@ clc;clear;
 %Columna 2 --> Tiempo (ms)
 %Columna 3,4,5 --> Acceleracion x, y, z (m/s^2)
 
-N = cleanData('precalib1_W.csv');
+N = cleanData('DATASET/precalib1_W.csv');
 
 %Separamos en arrays cada componente t, Ax, Ay, Az
 t = N(:, 1).';
@@ -48,16 +48,26 @@ picos_max = findpeaks(P);
 %Genio el de google
 picos_min = findpeaks(-P);
 
+%Si las matrices no son iguales, igualar dimensiones
+if length(picos_max) > length(picos_min)
+   picos_min = [picos_min, zeros(1,length(picos_max)-length(picos_min))];
+elseif length(picos_min) > length(picos_max)
+   picos_max = [picos_max, zeros(1,length(picos_min)-length(picos_max))];
+end
+
 %Y obtenemos finalmente la PROFUNDIDAD
 Depth_teorica = picos_max + picos_min;
 
 figure(1);
-subplot(2,1,1);
+subplot(3,1,1);
 stem(0:length(Depth_teorica) - 1,Depth_teorica, '.');
+title("Profundidad estimada")
+xlabel("Compresión")
+ylabel("Profundidad (cm)")
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%Nos devuelve una TABLA no matriz
-N = cleanData('anne1.csv');
+N = cleanData('DATASET/anne1.csv');
 %Separamos en arrays cada componente t, Ax, Ay, Az
 %Columna 3 --> start Tiempo s?
 %Columna 4 --> Depth mm?
@@ -69,9 +79,24 @@ t = t - t(1);
 %Pasamos a cm los mm
 Depth_real = Depth_real * 10 ^ -1;
 
-subplot(2,1,2);
-stem(t, Depth_real, '.');
-   
+subplot(3,1,2);
+stem(0:length(Depth_real) - 1, Depth_real, '.');
+title("Profundidad real")
+xlabel("Compresión")
+ylabel("Profundidad (cm)")
+
+%Calculamos el error de estimación
+error = Depth_teorica(1:length(Depth_real)) - Depth_real;
+
+subplot(3,1,3);
+stem(0:length(error) - 1, error, '.');
+title("Error")
+xlabel("Compresión")
+ylabel("Error (cm)")
+
+%Calculamos el error cuadrático medio
+err = mean((Depth_teorica(1:length(Depth_real)) - Depth_real).^2);
+disp(['El error cuadrático medio es: ',num2str(err), ' cm^2'])
 
 function dibujarP1(t, Ax, Ay, Az, A_filtrada, V, P);
     %Dibujamos cada ACELERACION por separado
