@@ -1,5 +1,24 @@
 clc;clear;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%LECTURA DATOS%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%GROUND TRUTH%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%Nos devuelve una TABLA no matriz
+M = cleanData('DATASET/anne1.csv');
+%Separamos en arrays cada componente t, Ax, Ay, Az
+%Columna 3 --> start Tiempo s?
+%Columna 4 --> Depth mm?
+t_real = M(:, 5).';
+Depth_real = M(:, 3).';
+
+%Pasamos a cm los mm
+Depth_real = Depth_real * 10 ^ -1;
+
+%%%%%%%%%%TEST DATA%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%%Nos devuelve una TABLA no matriz
 %Columna 1 --> Numero muestra
 %Columna 2 --> Tiempo (ms)
@@ -23,19 +42,23 @@ Ts = t(2) - t(1);
 %Obtenemos la frecuencia de muestreo
 Fs = 1 / Ts;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%PROCESADO DE DATOS%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %Obtenemos la magnitud del vector
 A = sqrt(Ax .^ 2 + Ay .^ 2 + Az .^ 2);
 
 %%Filtramos la señal de aceleracion para ELIMINAR la CONTINUA
 A_filtrada = filtrado_senal(A, 1, 7, Fs, "high");
-A_filtrada = filtrado_senal(A_filtrada, 50, 4, Fs, "low");
+A_filtrada = filtrado_senal(A_filtrada, 40, 4, Fs, "low");
 
 %Integral TRAPEZOIDAL
 V = cumtrapz(t, A_filtrada);
 
 %Filtramos la señal integrada (V) para ELIMINAR la CONTINUA
 V_filtrada = filtrado_senal(V, 1, 7, Fs, "high");
-V_filtrada = filtrado_senal(V_filtrada, 50, 4, Fs, "low");
+V_filtrada = filtrado_senal(V_filtrada, 40, 4, Fs, "low");
 
 %Pasamos a cm/s
 V_filtrada = V_filtrada * 10 ^ 2;
@@ -44,59 +67,70 @@ V_filtrada = V_filtrada * 10 ^ 2;
 P = cumtrapz(t, V_filtrada);
 
 %%Obtenemos los picos MAXIMOS y MINIMOS
-picos_max = findpeaks(P);
+[picos_max n_max] = findpeaks(P);
 %Genio el de google
-picos_min = findpeaks(-P);
+[picos_min n_min] = findpeaks(-P);
 
-%Si las matrices no son iguales, igualar dimensiones
-if length(picos_max) > length(picos_min)
-   picos_min = [picos_min, zeros(1,length(picos_max)-length(picos_min))];
-elseif length(picos_min) > length(picos_max)
-   picos_max = [picos_max, zeros(1,length(picos_min)-length(picos_max))];
+%Gestion de EXCEPCIONES
+if length(n_max) > length(n_min)
+    n_max = n_max(1:length(n_min));
+    picos_max = picos_max(1:length(n_min));
 end
+
+if length(n_max) < length(n_min)
+    n_min = n_min(1:length(n_max));
+    picos_min = picos_min(1:length(n_max));
+end
+
+t_teorico = (n_max*1/Fs + n_min*1/Fs)/2;
 
 %Y obtenemos finalmente la PROFUNDIDAD
 Depth_teorica = picos_max + picos_min;
 
-figure(1);
-subplot(3,1,1);
-stem(0:length(Depth_teorica) - 1,Depth_teorica, '.');
-title("Profundidad estimada")
-xlabel("Compresión")
-ylabel("Profundidad (cm)")
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Encuadrar Ventana (WINDOW) de trabajo
+%%Limite INFERIOR
+for i = 1:length(t_teorico)
+    if t_teorico(1,i) > t_real(1,1)
+        lim_inf = i;
+        break;
+    end
+end
 
-%%%Nos devuelve una TABLA no matriz
-N = cleanData('DATASET/anne1.csv');
-%Separamos en arrays cada componente t, Ax, Ay, Az
-%Columna 3 --> start Tiempo s?
-%Columna 4 --> Depth mm?
-t = N(:, 2).';
-Depth_real = N(:, 3).';
-%Hacemos que el eje empiece en 0
-t = t - t(1);
-
-%Pasamos a cm los mm
-Depth_real = Depth_real * 10 ^ -1;
-
-subplot(3,1,2);
-stem(0:length(Depth_real) - 1, Depth_real, '.');
-title("Profundidad real")
-xlabel("Compresión")
-ylabel("Profundidad (cm)")
+%%Limite SUPERIOR
+W = 140;
 
 %Calculamos el error de estimación
-error = Depth_teorica(1:length(Depth_real)) - Depth_real;
+error = Depth_teorica(lim_inf:lim_inf + W - 1) - Depth_real(1:W);
+
+%Calculamos el error cuadrático medio
+err = mean((Depth_teorica(lim_inf:lim_inf + W - 1) - Depth_real(1:W)).^2);
+disp(['El error cuadrático medio es: ',num2str(err)])
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%REPRESENTACION DATOS%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure(1);
+subplot(3,1,1);
+stem(t_teorico(lim_inf:lim_inf + W - 1), Depth_teorica(lim_inf:lim_inf + W - 1), '.');
+title("Profundidad estimada")
+xlabel("Instante tiempo (s)")
+ylabel("Profundidad (cm)")
+axis([0 max(t_teorico(lim_inf:lim_inf + W - 1)) + 2 0 8])
+
+subplot(3,1,2);
+stem(t_real(1:W), Depth_real(1:W), '.');
+title("Profundidad real")
+xlabel("Instante tiempo (s)")
+ylabel("Profundidad (cm)")
+axis([0 max(t_real(1:W)) + 2 0 8])
 
 subplot(3,1,3);
-stem(0:length(error) - 1, abs(error), '.');
+stem(t_real(1:W), abs(error), '.');
 title("Error")
 xlabel("Compresión")
 ylabel("Error (cm)")
-
-%Calculamos el error cuadrático medio
-err = mean((Depth_teorica(1:length(Depth_real)) - Depth_real).^2);
-disp(['El error cuadrático medio es: ',num2str(err), ' cm^2'])
+axis([0 max(t_real(1:W)) + 2 0 8])
 
 function dibujarP1(t, Ax, Ay, Az, A_filtrada, V, P);
     %Dibujamos cada ACELERACION por separado
