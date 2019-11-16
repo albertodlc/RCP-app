@@ -96,6 +96,10 @@ end
 Depth_teorica = picos_max + picos_min;
 
 t_teorico = (n_max*1/Fs + n_min*1/Fs)/2;
+if t_teorico(end) < t_teorico(end-1) %Cuando los picos no son pares, hay error en el último valor
+   t_teorico = t_teorico(1:end-1); %Si hay error, se elimina
+   Depth_teorica = Depth_teorica(1:end-1);
+end
 
 %Corregir desfase entre señal teórica y real
 if desf(num) < 0
@@ -114,28 +118,26 @@ elseif desf(num) > 0
     t_real = t_real - t_real(1);
 end
 
-%%Igualar número de muestras
-if length(t_real) > length(t_teorico)
-    t_real = t_real(1:length(t_teorico));
-    Depth_real = Depth_real(1:length(t_teorico));
-elseif length(t_teorico) > length(t_real)
-    t_teorico = t_teorico(1:length(t_real));
-    Depth_teorica = Depth_teorica(1:length(t_real));
+%%Igualar duración en segundos de la señal teórica y la real
+if t_real(end) > t_teorico(end)
+    Depth_real = Depth_real(t_real<=t_teorico(end));
+    t_real = t_real(t_real<=t_teorico(end));
+elseif t_teorico(end) > t_real(end)
+    Depth_teorica = Depth_teorica(t_teorico<=t_real(end));
+    t_teorico = t_teorico(t_teorico<=t_real(end));
 end
 
-%Calculamos el error de estimación
-error = Depth_teorica - Depth_real;
-
-%Calculamos el error cuadrático medio
-err = mean((Depth_teorica - Depth_real).^2);
-disp(['El error cuadrático medio es: ',num2str(err)])
+t_window = 5;
+step = 2.5;
+[comp_rate_teorica, comp_depth_teorica, comp_t_teorica] = analisis_senal(Depth_teorica,t_teorico,t_window,step);
+[comp_rate_real, comp_depth_real, comp_t_real] = analisis_senal(Depth_real,t_real,t_window,step);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%REPRESENTACION GRAFICA%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure(1);
-subplot(3,1,1);
+subplot(2,1,1);
 stem(t_teorico, Depth_teorica, '.');
 title(strcat("Profundidad estimada (Dataset ",num2str(num),")"))
 xlabel("Instante tiempo (s)")
@@ -143,20 +145,41 @@ ylabel("Profundidad (cm)")
 % axis([0 max(t_teorico) + 2 0 8])
 axis([0 max(t_teorico) 0 8])
 
-subplot(3,1,2);
+subplot(2,1,2);
 stem(t_real, Depth_real, '.');
 title(strcat("Profundidad real (Dataset ",num2str(num),")"))
 xlabel("Instante tiempo (s)")
 ylabel("Profundidad (cm)")
 % axis([0 max(t_real) + 2 0 8])
-axis([0 max(t_teorico) 0 8])
+axis([0 max(t_real) 0 8])
 
-subplot(3,1,3);
-stem(t_real, abs(error), '.');
-title("Error")
-xlabel("Compresión")
-ylabel("Error (cm)")
-axis([0 max(t_real) + 2 0 8])
+% subplot(3,1,3);
+% stem(t_real, abs(error), '.');
+% title("Error")
+% xlabel("Compresión")
+% ylabel("Error (cm)")
+% axis([0 max(t_real) + 2 0 8])
+
+% Comparación entre analisis de la señal real y la teórica
+figure(2)
+subplot(2,1,1)
+stem(comp_t_real,comp_rate_real)
+hold on
+stem(comp_t_teorica,comp_rate_teorica)
+legend('Real','Teórica')
+title(strcat('Frecuencia media de compresión   Ventana: ',num2str(t_window),' s   Paso: ',num2str(step),' s'))
+xlabel('Tiempo (s)')
+ylabel('Frecuencia (cpm)')
+ylim([60,140])
+
+subplot(2,1,2)
+stem(comp_t_real,comp_depth_real)
+hold on
+stem(comp_t_teorica,comp_depth_teorica)
+legend('Real','Teórica')
+title('Profundidad media de compresión')
+xlabel('Tiempo (s)')
+ylabel('Profundidad (cpm)')
 
 function [P,f]= analisis_frecuencial(senal, Fs)
     %Respuesta en frecuencia
@@ -187,3 +210,29 @@ function senal_salida = filtrado_senal(senal_entrada, f_filtrado, orden, Fs, tip
     senal_salida = filtfilt(b,a,senal_entrada);
 end
 
+function [comp_rate, comp_depth,comp_t] = analisis_senal(depth,t,t_window,step)
+% Extraer valores medios de frecuencia y profundidad de compresión
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% depth: Array de profundidad de compresiones
+% t: Tiempo de array de compresiones
+% t_window: Tiempo de ventana
+% step: Tiempo transcurrido entre cada feedback
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% Teniendo en cuenta que t_window > step
+% El primer feedback se da cuando se tiene una señal de duración = t_window
+% Se termina de analizar el tiempo que queda hasta depth(end) < step
+
+    pasos = floor((t(end)-t_window)/step) + 1;
+
+    comp_rate = zeros(1,pasos);
+    comp_depth = zeros(1,pasos);
+    comp_t = linspace(t_window,(pasos-1)*step+t_window,pasos);
+      
+    for i = 0:pasos-1
+        depth_aux = depth(t>=i*step & t<(i*step + t_window));
+        t_aux = t(t>=i*step & t<(i*step + t_window));
+        
+        comp_rate(i+1) = 60./median(diff(t_aux)); % En compresiones por minuto
+        comp_depth(i+1) = median(depth_aux);
+    end
+end
