@@ -1,4 +1,4 @@
-clc;clear;
+clc;clear;close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%LECTURA DATOS%%%%%%%%%%%%%%%%%%%%%%%%
@@ -6,8 +6,15 @@ clc;clear;
 
 %%%%%%%%%%GROUND TRUTH%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%Especificar número de dataset
+num = input('Introduce número de dataset: ');
+
+%%Especificar desfase
+% desf = input('Introduce desfase: '); %%Introducir desfase manualmente
+load desf % Carga array con el desfase calculado para cada dataset
+
 %%%Nos devuelve una TABLA no matriz
-M = readtable('DATASET/anne2.csv');
+M = readtable(strcat('DATASET/anne',num2str(num),'.csv'));
 %Separamos en arrays cada componente t, Ax, Ay, Az
 %Columna 3 --> start Tiempo s?
 %Columna 4 --> Depth mm?
@@ -24,7 +31,7 @@ Depth_real = Depth_real * 10 ^ -1;
 %Columna 2 --> Tiempo (ms)
 %Columna 3,4,5 --> Acceleracion x, y, z (m/s^2)
 
-N = readtable('DATASET/precalib2_W.csv');
+N = readtable(strcat('DATASET/precalib',num2str(num),'_W.csv'));
 
 %Separamos en arrays cada componente t, Ax, Ay, Az
 t = N.Time_Date';
@@ -90,42 +97,66 @@ Depth_teorica = picos_max + picos_min;
 
 t_teorico = (n_max*1/Fs + n_min*1/Fs)/2;
 
-%Alinear señal TEORICA y señal REAL
-dif = t_real(1,1) - t_teorico(1,1);
-t_real = t_real - dif;
+%Corregir desfase entre señal teórica y real
+if desf(num) < 0
+    t_teorico = t_teorico - desf(num);
+    
+    Depth_real = Depth_real(t_real>=t_teorico(1)); %Se elimina la parte de la señal real anterior al comienzo de la teórica
+    t_real = t_real(t_real>=t_teorico(1));
+    t_real = t_real - t_teorico(1); %La señal teórica comienza en t = 0
+    t_teorico = t_teorico - t_teorico(1);
+elseif desf(num) > 0
+    t_real = t_real + desf(num);
+    
+    Depth_teorica = Depth_teorica(t_teorico>=t_real(1)); %Se elimina la parte de la señal teórica anterior al comienzo de la real
+    t_teorico = t_teorico(t_teorico>=t_real(1));
+    t_teorico = t_teorico - t_real(1); %La señal real comienza en t = 0
+    t_real = t_real - t_real(1);
+end
+
+%%Igualar número de muestras
+if length(t_real) > length(t_teorico)
+    t_real = t_real(1:length(t_teorico));
+    Depth_real = Depth_real(1:length(t_teorico));
+elseif length(t_teorico) > length(t_real)
+    t_teorico = t_teorico(1:length(t_real));
+    Depth_teorica = Depth_teorica(1:length(t_real));
+end
 
 %Calculamos el error de estimación
-%error = Depth_teorica(lim_inf:lim_inf + W - 1) - Depth_real(1:W);
+error = Depth_teorica - Depth_real;
 
 %Calculamos el error cuadrático medio
-%err = mean((Depth_teorica(lim_inf:lim_inf + W - 1) - Depth_real(1:W)).^2);
-%disp(['El error cuadrático medio es: ',num2str(err)])
+err = mean((Depth_teorica - Depth_real).^2);
+disp(['El error cuadrático medio es: ',num2str(err)])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%REPRESENTACION GRAFICA%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure(1);
-subplot(2,1,1);
+subplot(3,1,1);
 stem(t_teorico, Depth_teorica, '.');
-title("Profundidad estimada")
+title(strcat("Profundidad estimada (Dataset ",num2str(num),")"))
 xlabel("Instante tiempo (s)")
 ylabel("Profundidad (cm)")
-axis([0 max(t_teorico) + 2 0 8])
+% axis([0 max(t_teorico) + 2 0 8])
+axis([0 max(t_teorico) 0 8])
 
-subplot(2,1,2);
+subplot(3,1,2);
 stem(t_real, Depth_real, '.');
-title("Profundidad real")
+title(strcat("Profundidad real (Dataset ",num2str(num),")"))
 xlabel("Instante tiempo (s)")
 ylabel("Profundidad (cm)")
-axis([0 max(t_real) + 2 0 8])
+% axis([0 max(t_real) + 2 0 8])
+axis([0 max(t_teorico) 0 8])
 
-%subplot(3,1,3);
-%stem(t_real, abs(error), '.');
-%title("Error")
-%xlabel("Compresión")
-%ylabel("Error (cm)")
-%axis([0 max(t_real) + 2 0 8])
+subplot(3,1,3);
+stem(t_real, abs(error), '.');
+title("Error")
+xlabel("Compresión")
+ylabel("Error (cm)")
+axis([0 max(t_real) + 2 0 8])
 
 function [P,f]= analisis_frecuencial(senal, Fs)
     %Respuesta en frecuencia
