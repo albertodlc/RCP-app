@@ -56,16 +56,29 @@ Fs = 1 / Ts;
 %Obtenemos la magnitud del vector
 A = sqrt(Ax .^ 2 + Ay .^ 2 + Az .^ 2);
 
+%%Añadimos 2s de señal antes y después, para evitar el transitorio
+n_trans = round(2*Fs);
+A = [ones(1,n_trans)*A(1) A ones(1,n_trans)*A(end)];
+
 %%Filtramos la señal de aceleracion para ELIMINAR la CONTINUA
 A_filtrada = filtrado_senal(A, 1, 7, Fs, "high");
 A_filtrada = filtrado_senal(A_filtrada, 40, 4, Fs, "low");
 
+%%Eliminamos la señal añadida
+A_filtrada = A_filtrada(n_trans+1:end-n_trans);
+
 %Integral TRAPEZOIDAL
 V = cumtrapz(t, A_filtrada);
+
+%%Ponemos señal adicional para evitar transitorios
+V = [ones(1,n_trans)*V(1) V ones(1,n_trans)*V(end)];
 
 %Filtramos la señal integrada (V) para ELIMINAR la CONTINUA
 V_filtrada = filtrado_senal(V, 1, 7, Fs, "high");
 V_filtrada = filtrado_senal(V_filtrada, 40, 4, Fs, "low");
+
+%Eliminamos señal adicional
+V_filtrada = V_filtrada(n_trans+1:end-n_trans);
 
 %Pasamos a cm/s
 V_filtrada = V_filtrada * 10 ^ 2;
