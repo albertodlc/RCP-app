@@ -145,12 +145,6 @@ step = 2.5;
 [comp_rate_teorica, comp_depth_teorica, comp_t_teorica] = analisis_senal(Depth_teorica,t_teorico,t_window,step);
 [comp_rate_real, comp_depth_real, comp_t_real] = analisis_senal(Depth_real,t_real,t_window,step);
 
-if length(comp_t_real) > length(comp_t_teorica)
-    comp_t_real = comp_t_real(1:end-1);
-elseif length(comp_t_real) < length(comp_t_teorica)
-    comp_t_teorica = comp_t_teorica(1:end-1);
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%REPRESENTACION GRAFICA%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
