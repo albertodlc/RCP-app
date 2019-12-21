@@ -132,24 +132,27 @@ elseif desf(num) > 0
 end
 
 %%Igualar duración en segundos de la señal teórica y la real
-if t_real(end) > t_teorico(end)
-    Depth_real = Depth_real(t_real<=t_teorico(end));
-    t_real = t_real(t_real<=t_teorico(end));
+% if t_real(end) > t_teorico(end)
+%     Depth_real = Depth_real(t_real<=t_teorico(end));
+%     t_real = t_real(t_real<=t_teorico(end));
+% elseif t_teorico(end) > t_real(end)
+%     Depth_teorica = Depth_teorica(t_teorico<=t_real(end));
+%     t_teorico = t_teorico(t_teorico<=t_real(end));
+% end
+
+if length(t_real) > length(t_teorico)
+    Depth_real = Depth_real(1:length(t_teorico));
+    t_real = t_real(1:length());
 elseif t_teorico(end) > t_real(end)
     Depth_teorica = Depth_teorica(t_teorico<=t_real(end));
     t_teorico = t_teorico(t_teorico<=t_real(end));
 end
 
+
 t_window = 5;
 step = 2.5;
 [comp_rate_teorica, comp_depth_teorica, comp_t_teorica] = analisis_senal(Depth_teorica,t_teorico,t_window,step);
 [comp_rate_real, comp_depth_real, comp_t_real] = analisis_senal(Depth_real,t_real,t_window,step);
-
-if length(comp_t_real) > length(comp_t_teorica)
-    comp_t_real = comp_t_real(1:end-1);
-elseif length(comp_t_real) < length(comp_t_teorica)
-    comp_t_teorica = comp_t_teorica(1:end-1);
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%REPRESENTACION GRAFICA%%%%%%%%%%%%%%%

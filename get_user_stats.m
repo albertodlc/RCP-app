@@ -6,8 +6,9 @@ clc;clear;close all
 
 %%%%%%%%%%GROUND TRUTH%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%Especificar número de dataset
-num = input('Introduce número de dataset: ');
+user_stats = struct();
+
+for num = 1:15
 
 %%Especificar desfase
 % desf = input('Introduce desfase: '); %%Introducir desfase manualmente
@@ -147,58 +148,32 @@ step = 2.5;
 
 if length(comp_t_real) > length(comp_t_teorica)
     comp_t_real = comp_t_real(1:end-1);
+    comp_depth_real = comp_depth_real(1:end-1);
+    comp_rate_real = comp_rate_real(1:end-1);
 elseif length(comp_t_real) < length(comp_t_teorica)
     comp_t_teorica = comp_t_teorica(1:end-1);
+    comp_depth_teorica = comp_depth_teorica(1:end-1);
+    comp_rate_teorica = comp_rate_teorica(1:end-1);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%REPRESENTACION GRAFICA%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+rate_abs_error = comp_rate_teorica - comp_rate_real;
+rate_rel_error = (comp_rate_teorica - comp_rate_real)*100./comp_rate_real;
 
-figure(1);
-subplot(2,1,1);
-stem(t_teorico, Depth_teorica, '.');
-title(strcat("Profundidad estimada (Dataset ",num2str(num),")"))
-xlabel("Instante tiempo (s)")
-ylabel("Profundidad (cm)")
-% axis([0 max(t_teorico) + 2 0 8])
-axis([0 max(t_teorico) 0 8])
+depth_abs_error = comp_depth_teorica - comp_depth_real;
+depth_rel_error = (comp_depth_teorica - comp_depth_real)*100./comp_depth_real;
 
-subplot(2,1,2);
-stem(t_real, Depth_real, '.');
-title(strcat("Profundidad real (Dataset ",num2str(num),")"))
-xlabel("Instante tiempo (s)")
-ylabel("Profundidad (cm)")
-% axis([0 max(t_real) + 2 0 8])
-axis([0 max(t_real) 0 8])
+user_stats(num).comp_rate_teorica = comp_rate_teorica;
+user_stats(num).comp_rate_real = comp_rate_real;
+user_stats(num).comp_depth_teorica = comp_depth_teorica;
+user_stats(num).comp_depth_real = comp_depth_real;
+user_stats(num).comp_t = comp_t_real;
+user_stats(num).rate_abs_error = rate_abs_error;
+user_stats(num).rate_rel_error = rate_rel_error;
+user_stats(num).depth_abs_error = depth_abs_error;
+user_stats(num).depth_rel_error = depth_rel_error;
+end
 
-% subplot(3,1,3);
-% stem(t_real, abs(error), '.');
-% title("Error")
-% xlabel("Compresión")
-% ylabel("Error (cm)")
-% axis([0 max(t_real) + 2 0 8])
-
-% Comparación entre analisis de la señal real y la teórica
-figure(2)
-subplot(2,1,1)
-stem(comp_t_real,comp_rate_real)
-hold on
-stem(comp_t_teorica,comp_rate_teorica)
-legend('Real','Teórica')
-title(strcat('Frecuencia media de compresión   Ventana: ',num2str(t_window),' s   Paso: ',num2str(step),' s'))
-xlabel('Tiempo (s)')
-ylabel('Frecuencia (cpm)')
-ylim([60,140])
-
-subplot(2,1,2)
-stem(comp_t_real,comp_depth_real)
-hold on
-stem(comp_t_teorica,comp_depth_teorica)
-legend('Real','Teórica')
-title('Profundidad media de compresión')
-xlabel('Tiempo (s)')
-ylabel('Profundidad (cpm)')
+save user_stats user_stats
 
 function [P,f]= analisis_frecuencial(senal, Fs)
     %Respuesta en frecuencia
